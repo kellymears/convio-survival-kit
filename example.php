@@ -1,6 +1,7 @@
-<?php require ('convio-survival-toolkit/convio-survival-toolkit.php'); ?>
+<?php require ('convio-survival-kit.php'); ?>
 
 <?php
+
 // instantiate
 $convio_survival = new convio_survival;
 
@@ -9,6 +10,7 @@ $convio_survival->connect_to_convio();
 
 // this is the controller call
 $convio_survival->process_method();
+
 ?>
 
 <!DOCTYPE html>
@@ -19,8 +21,7 @@ $convio_survival->process_method();
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width" />
   <title>Convio Survival Toolkit</title>
-  <link rel="stylesheet" href="foundation4/css/foundation.css" />
-  <script src="foundation4/js/vendor/custom.modernizr.js"></script>
+  <link rel="stylesheet" href="foundation.min.css" />
 </head>
 
 <body>
@@ -161,18 +162,6 @@ $convio_survival->process_method();
 
 			</div>
 		</div>
-
-	<script>
-  document.write('<script src=' +
-  ('__proto__' in {} ? 'foundation4/js/vendor/zepto' : 'foundation4/js/vendor/jquery') +
-  '.js><\/script>')
-  </script>
-  
-  <script src="foundation4/js/foundation.min.js"></script>
-
-    <script>
-    $(document).foundation();
-  </script>
 </body>
 </html>
 

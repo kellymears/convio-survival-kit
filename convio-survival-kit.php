@@ -24,7 +24,24 @@
 ::: ##::::::: ##:::: ##:::: ##:::: ##:::: ##:::::::::: ##. ##::::::: ##:::::::: ##::::                
 ::: ##::::::: ##:::: ##:::: ##:::: ##:::: ##:::::::::: ##:. ##:::::: ##:::::::: ##::::                
 ::: ##:::::::. #######:::::. #######::::: ########:::: ##::. ##::::'####::::::: ##::::                
-:::..:::::::::.......:::::::.......::::::........:::::..::::..:::::....::::::::..:::::     
+:::..:::::::::.......:::::::.......::::::........:::::..::::..:::::....::::::::..:::::   	
+
+	--------------------------------------------------------------------------
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License, version 2, as 
+	published by the Free Software Foundation.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+	--------------------------------------------------------------------------
 
 */
 
@@ -53,14 +70,14 @@ if(!class_exists("convio_survival")) {
 		function __construct() {
 
 			// convio
-			$this->convio_config['host'] = 'secure3.convio.net'; 
-			$this->convio_config['api_key'] = 'api_key'; 
-			$this->convio_config['login'] = 'kellymears'; 
-			$this->convio_config['password'] = 'Q!W@E#R$T%Y^'; 
-			$this->convio_config['short_name'] = 'sdc'; 
+			$this->convio_config['host'] = 'secureX.convio.net'; 
+			$this->convio_config['api_key'] = 'XXXXXX'; 
+			$this->convio_config['login'] = 'XXXXXXX'; 
+			$this->convio_config['password'] = 'XXXXXXXXXXXX'; 
+			$this->convio_config['short_name'] = 'XXX'; 
 
 			// sunlight
-			$this->sunlight_api = '2df0837d05584e2198aaa1a5feb772d4';
+			$this->sunlight_api = 'XXXXXXXXXXXXXXXXXXXXXX';
 
 			// get uri params
 			if ( isset ( $_GET['method'] ) ) $this->params['method'] = $_GET['method'];
@@ -146,6 +163,23 @@ if(!class_exists("convio_survival")) {
 			} else $this->errors[] = "remove_from_group(): missing primary email or group_id params";
 		}
 
+		/* get_action_count */ 
+		/*************************************************/
+		function get_action_count($alert_id) {
+			
+			$this->convio_data['alert_id'] = $alert_id;
+			$this->convio_data['alert_type'] = 'action';
+			
+			$response = $this->convio_api->call('SRAdvocacyAPI_getAdvocacyAlert', $this->convio_data);
+			if($response) $this->messages[] = "getting action count";
+				else $this->errors[] = "get_action_count(): no result from convio";
+			foreach($response as $resp_obj) {
+				$this->messages[] = $resp_obj->alert->interactionCount .' signers of '. $alert_id;
+				return $resp_obj->alert->interactionCount;
+			}
+			
+		}
+
 		/* update user email */ 
 		/*************************************************/
 		private function update_email($email, $cons_id) {
@@ -153,11 +187,8 @@ if(!class_exists("convio_survival")) {
 				$convio_data['cons_id'] = $cons_id;
 				$convio_data['primary_email'] = $email;
 				$response = $this->convio_api->call('SRConsAPI_createOrUpdate', $convio_data);
-				if($response) {
-					print "<pre>";
-						print_r($response);
-					print "</pre>";
-				} else $this->errors[] = 'update_email(): no response from convio';
+				if($response) $this->messages[] = $response;
+					else $this->errors[] = 'update_email(): no response from convio';
 			} else $this->errors[] = "update_email(): missing primary email or group_id params";
 		}
 
@@ -173,46 +204,43 @@ if(!class_exists("convio_survival")) {
 			curl_close($ch);
 
 			if($ch_d->results) {
-				$this->constituent['congressperson']['state'] = $ch_d->results[0]->state;
-				$this->constituent['congressperson']['district'] = $ch_d->results[0]->district;
+				$congressperson['state'] = $ch_d->results[0]->state;
+				$congressperson['district'] = $ch_d->results[0]->district;
+				$this->messages[] = "received state and district data";
 			} else $this->errors[] = 'get_legislative_contact(): could not get state or district data';
 
 			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/legislators?district='. $this->constituent['congressperson']['district'] .'&state='. $this->constituent['congressperson']['state'] .'&apikey='. $this->sunlight_api);
+			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/legislators?district='. $congressperson['district'] .'&state='. $congressperson['state'] .'&apikey='. $this->sunlight_api);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			$ch_d = json_decode(curl_exec($ch));
 			curl_close($ch);
 
 			if($ch_d->results) {
-				$this->constituent['congressperson']['first_name'] = $ch_d->results[0]->first_name;
-				$this->constituent['congressperson']['last_name'] = $ch_d->results[0]->last_name;
-				$this->constituent['congressperson']['gender'] = $ch_d->results[0]->gender;
-				$this->constituent['congressperson']['party'] = $ch_d->results[0]->party;
-				$this->constituent['congressperson']['twitter_id'] = $ch_d->results[0]->twitter_id;
-				$this->constituent['congressperson']['twitter_link'] = 'http://twitter.com/'. $ch_d->results[0]->twitter_id;
-				$this->constituent['congressperson']['facebook_id'] = $ch_d->results[0]->facebook_id;
-				$this->constituent['congressperson']['facebook_link'] = 'http://facebook.com/'. $this->constituent['congressperson']['facebook_id'];
-				$this->constituent['congressperson']['phone'] = $ch_d->results[0]->phone;
-				$this->constituent['congressperson']['website_link'] = $ch_d->results[0]->website;
-				$this->constituent['congressperson']['govtrack_id'] = $ch_d->results[0]->govtrack_id;
-				$this->constituent['congressperson']['thomas_id'] = $ch_d->results[0]->thomas_id;
-				$this->constituent['congressperson']['votesmart_id'] = $ch_d->results[0]->votesmart_id;
-				$this->constituent['congressperson']['fec_ids'] = $ch_d->results[0]->fec_ids;
+				$congressperson['first_name'] = $ch_d->results[0]->first_name;
+				$congressperson['last_name'] = $ch_d->results[0]->last_name;
+				$congressperson['gender'] = $ch_d->results[0]->gender;
+				$congressperson['party'] = $ch_d->results[0]->party;
+				$congressperson['twitter_id'] = $ch_d->results[0]->twitter_id;
+				$congressperson['twitter_link'] = 'http://twitter.com/'. $ch_d->results[0]->twitter_id;
+				$congressperson['facebook_id'] = $ch_d->results[0]->facebook_id;
+				$congressperson['facebook_link'] = 'http://facebook.com/'. $congressperson['facebook_id'];
+				$congressperson['phone'] = $ch_d->results[0]->phone;
+				$congressperson['website_link'] = $ch_d->results[0]->website;
+				$congressperson['govtrack_id'] = $ch_d->results[0]->govtrack_id;
+				$congressperson['thomas_id'] = $ch_d->results[0]->thomas_id;
+				$congressperson['votesmart_id'] = $ch_d->results[0]->votesmart_id;
+				$congressperson['fec_ids'] = $ch_d->results[0]->fec_ids;
+				$this->messages[] = "received congressional contact data";
 			} else $this->errors[] = 'get_legislative_contact(): could not get legislators contact data';
 
-			return $this->constituent['congressperson'];
+			if($congressperson) {
+				$this->messages[] = $congressperson;
+				return $congressperson;
+			} else $this->errors[] = 'get_legislative_contact(): could not get legislators contact data';
 
 		}
 
-
-		/* get constituent information */ 
-		/*************************************************/
-		
-		private function get_constituent() {
-
-		}
-
-		/* advocacy */ 
+		/* take action */ 
 		/*************************************************/
 		
 		private function take_action($alert_id = null) {
@@ -231,17 +259,8 @@ if(!class_exists("convio_survival")) {
 					else $this->errors[] = 'take_action(): missing phone';
 
 			$response = $this->convio_api->call('SRAdvocacyAPI_takeAction', $convio_data);
+			$messages[] = "convio call made, response follows:";
 			$messages[] = $response;
-		}
-
-		/* get bill data */
-		/*************************************************/
-		
-		private function get_bill_data() {
-			// ....
-
-
-			// ....
 		}
 
 		/* error reporting */
@@ -255,12 +274,12 @@ if(!class_exists("convio_survival")) {
 		}
 
 		public function return_messages() {
-			$this->messages[] = 'return_messages() called.. constituent record follows:';
-			$this->messages[] = $this->constituent;
+			$this->messages[] = 'return_messages() called.';
 			if(!empty($this->messages)) return $this->messages;
 				else print "convio survival toolkit remains unopened.";
 
 		}
+
 	}
 }
 

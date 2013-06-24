@@ -45,9 +45,10 @@
 
 */
 
+error_reporting(E_ALL);
 
-require('simpledom.php');
-require('convio-open-api.php');
+require_once('simpledom.php'); //simpledom
+require_once('convio-open-api.php'); // convio supplied php wrapper
 
 if(!class_exists("convio_survival")) {
 	
@@ -63,36 +64,30 @@ if(!class_exists("convio_survival")) {
 		public $messages = array(); // for displaying messages to user
 
 		public $constituent; // THE WHOLE POINT OF THIS WHOLE THING, CONVIO
-
-		/* construct array of URI params, connect to convio */
-		/*************************************************/
+		public $api_output;
 		
 		function __construct() {
 
-			// convio
-			$this->convio_config['host'] = 'secureX.convio.net'; 
-			$this->convio_config['api_key'] = 'XXXXXX'; 
-			$this->convio_config['login'] = 'XXXXXXX'; 
-			$this->convio_config['password'] = 'XXXXXXXXXXXX'; 
-			$this->convio_config['short_name'] = 'XXX'; 
-
 			// sunlight
-			$this->sunlight_api = 'XXXXXXXXXXXXXXXXXXXXXX';
+			$this->sunlight_api = '2df0837d05584e2198aaa1a5feb772d4';
 
-			// get uri params
+			// uri self destruction
 			if ( isset ( $_GET['method'] ) ) $this->params['method'] = $_GET['method'];
+			if ( isset ( $_GET['json'] ) ) $this->params['json'] = $_GET['json'];
 			if ( isset ( $_GET['email'] ) ) $this->params['email'] = $_GET['email'];
 			if ( isset ( $_GET['group_id'] ) ) $this->params['group_id'] = $_GET['group_id'];
 			if ( isset ( $_GET['cons_id'] ) ) $this->params['cons_id'] = $_GET['cons_id']; 
 			if ( isset ( $_GET['alert_id'] ) ) $this->params['alert_id'] = $_GET['alert_id']; 
 			if ( isset ( $_GET['zip'] ) ) $this->params['zip'] = $_GET['zip']; 
 		
+			$this->messages[] = 'convio_survival instantiated';
+
 		}
 
 		/* connect to convio using their PHP wrapper */
 		/*************************************************/
 		
-		public function connect_to_convio($host = null, $short_name = null, $api_key = null, $login = null, $password = null) {
+		public function configure_convio($host = null, $short_name = null, $api_key = null, $login = null, $password = null) {
 
 			if(class_exists('convio_open_api')) $this->convio_api = new convio_open_api;
 				else $errors[] = "connect_to_convio(): could not load convio_open_api class from convio-open-api.php";
@@ -130,13 +125,48 @@ if(!class_exists("convio_survival")) {
 
 		/* CONTROLLER */
 		/*************************************************/
-		public function process_method() {
-			if( $this->params['method'] == 'add_to_group' ) $this->add_to_group($this->params['email'],$this->params['group_id']); 
-				elseif ( $this->params['method'] == 'remove_from_group' ) $this->remove_from_group($this->params['email'],$this->params['group_id']);
-				elseif ( $this->params['method'] == 'update_email' ) $this->update_email($this->params['email'], $this->params['cons_id']); 
-				elseif ( $this->params['method'] == 'get_congressperson') $this->get_congressperson($this->params['zip']);
-				elseif ( $this->params['method'] == 'take_action') $this->take_action($this->params['alert_id'], $this->params['email'], $this->params['phone']);  
+		public function do_api() {
+			
+			if( $this->params['method'] == 'add_to_group' ) 
+				$this->add_to_group($this->params['email'],$this->params['group_id']); 
+
+			elseif ( $this->params['method'] == 'remove_from_group' ) 
+				$this->remove_from_group($this->params['email'],$this->params['group_id']);
+
+			elseif ( $this->params['method'] == 'update_email' ) 
+				$this->update_email($this->params['email'], $this->params['cons_id']); 
+
+			elseif ( $this->params['method'] == 'estimate_congressperson') 
+				$this->estimate_congressperson($this->params['zip']);
+
+			elseif ( $this->params['method'] == 'take_action') 
+				$this->take_action($this->params['alert_id'], $this->params['email'], $this->params['phone']);  
+
+			elseif ( $this->params['method'] == 'get_cons' ) 
+				$this->get_constituent($this->params['cons']); 
+
+			elseif ( $this->params['method'] == 'get_cons_congressperson' ) 
+				$this->get_constituent_congressperson($this->params['email']);
+					
 					else $this->errors[] = "process_method(): no method param or invalid method param"; 
+		}
+
+		/* get constituent */
+		/*************************************************/
+		public function get_constituent($email) {
+			if( isset($email) ) {
+				$this->messages[] = "get_constituent() is called";
+				$convio_data['primary_email'] = $email;
+				$response = $this->convio_api->call('SRConsAPI_getUser', $convio_data);
+				if($response) {
+					foreach($response as $resp_obj) {
+						if($this->params['method'] == 'get_cons') return json_encode($resp_obj);
+						$this->messages[] = 'constituent data follows:';
+						$this->messages[] = $resp_obj;
+						return $resp_obj;
+					}
+				} else $this->errors[] = 'get_user(): no response from convio';
+			} else $this->errors[] = "get_user(): missing primary email param";
 		}
 
 		/* add user to group based on email */ 
@@ -146,8 +176,10 @@ if(!class_exists("convio_survival")) {
 				$convio_data['add_group_ids'] = $group_id;
 				$convio_data['primary_email'] = $email;
 				$response = $this->convio_api->call('SRConsAPI_createOrUpdate', $convio_data);
-				if($response) $this->messages[] = $response;
-					else $this->errors[] = 'add_to_group(): no response from convio';
+				if($response) {
+					$this->messages[] = $response;
+					return $response;
+				} else $this->errors[] = 'add_to_group(): no response from convio';
 			} else $this->errors[] = "add_to_group(): missing primary email or group_id params";
 		}
 
@@ -158,8 +190,10 @@ if(!class_exists("convio_survival")) {
 				$convio_data['remove_group_ids'] = $group_id;
 				$convio_data['primary_email'] = $email;
 				$response = $this->convio_api->call('SRConsAPI_createOrUpdate', $convio_data);
-				if($response) $this->messages[] = $response;
-					else $this->errors[] = 'remove_from_grup(): no response from convio';
+				if($response) {
+					$this->messages[] = $response;
+					return $response;
+				} else $this->errors[] = 'remove_from_grup(): no response from convio';
 			} else $this->errors[] = "remove_from_group(): missing primary email or group_id params";
 		}
 
@@ -192,25 +226,28 @@ if(!class_exists("convio_survival")) {
 			} else $this->errors[] = "update_email(): missing primary email or group_id params";
 		}
 
+		/* get constituent congressional representative */
+		/*************************************************/
+		public function get_constituent_congressperson($email) {
+			if( isset($email) ) {
+				$this->messages[] = "get_constituent_congressperson() is called";
+				$record = $this->get_constituent($email);
+				if($record) {
+					$congressperson = $this->get_congressperson($record->primary_address->state, $record->primary_address->cong_dist_id);
+					if($this->params['json'] == 'true') $this->api_output[] = json_encode($congressperson);
+						else return $congressperson;
+				} else $this->errors[] = "get_constituent_congressperson(): call to get_constituent()";
+			} else $this->errors[] = "get_constituent_congressperson(): missing primary email param";
+		}
+		
 		/* get legislative contact information */ 
 		/*************************************************/
-		
-		public function get_congressperson($zip, $api_call = 0) {
-			
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/districts/locate?zip=' . $zip .'&apikey='. $this->sunlight_api);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			$ch_d = json_decode(curl_exec($ch));
-			curl_close($ch);
+		public function get_congressperson($state,$district) {
 
-			if($ch_d->results) {
-				$congressperson['state'] = $ch_d->results[0]->state;
-				$congressperson['district'] = $ch_d->results[0]->district;
-				$this->messages[] = "received state and district data";
-			} else $this->errors[] = 'get_legislative_contact(): could not get state or district data';
+			$messages[] = "get_congressperson is called";
 
 			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/legislators?district='. $congressperson['district'] .'&state='. $congressperson['state'] .'&apikey='. $this->sunlight_api);
+			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/legislators?district='. $district .'&state='. $state .'&apikey='. $this->sunlight_api);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			$ch_d = json_decode(curl_exec($ch));
 			curl_close($ch);
@@ -230,14 +267,32 @@ if(!class_exists("convio_survival")) {
 				$congressperson['thomas_id'] = $ch_d->results[0]->thomas_id;
 				$congressperson['votesmart_id'] = $ch_d->results[0]->votesmart_id;
 				$congressperson['fec_ids'] = $ch_d->results[0]->fec_ids;
-				$this->messages[] = "received congressional contact data";
-			} else $this->errors[] = 'get_legislative_contact(): could not get legislators contact data';
+				$this->messages[] = "received congressional contact data:";
+			} else $this->errors[] = 'get_congressperson(): could not get legislators contact data';
 
 			if($congressperson) {
 				$this->messages[] = $congressperson;
 				return $congressperson;
-			} else $this->errors[] = 'get_legislative_contact(): could not get legislators contact data';
+			} else $this->errors[] = 'get_congressperson(): could not get legislators contact data';
 
+		}
+
+		/* no address? no problem! well, kind of a problem */ 
+		/*************************************************/
+		public function estimate_congressperson($zip) {
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, 'http://congress.api.sunlightfoundation.com/districts/locate?zip=' . $zip .'&apikey='. $this->sunlight_api);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			$ch_d = json_decode(curl_exec($ch));
+			curl_close($ch);
+
+			if($ch_d->results) {
+				$congressperson['state'] = $ch_d->results[0]->state;
+				$congressperson['district'] = $ch_d->results[0]->district;
+				$this->messages[] = "received state and district data estimation:";
+				$this->messages[] = $congressperson;
+				$this->api_output[] = $this->get_congressperson($congressperson['state'],$congressperson['district']);
+			} else $this->errors[] = 'estimate_district(): could not get state or district data';
 		}
 
 		/* take action */ 
@@ -263,14 +318,13 @@ if(!class_exists("convio_survival")) {
 			$messages[] = $response;
 		}
 
-		/* error reporting */
+		/* errors, messages, api output */
 		/*************************************************/
 		
 		public function return_errors() {
+			$this->messages[] = 'return_errors() called';
 			if(!empty($this->errors)) return $this->errors;
 				else print "no errors, you mensch.";
-
-			$this->messages[] = 'return_errors() called';
 		}
 
 		public function return_messages() {
@@ -278,6 +332,16 @@ if(!class_exists("convio_survival")) {
 			if(!empty($this->messages)) return $this->messages;
 				else print "convio survival toolkit remains unopened.";
 
+		}
+
+		public function do_api_output() {
+			foreach($this->api_output as $output) { 
+				$display = $output; 
+			}
+			if($display) {
+				$this->messages[] = 'api output printed';
+				print stripslashes($display);
+			}
 		}
 
 	}

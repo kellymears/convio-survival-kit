@@ -11,7 +11,7 @@ require ('convio-survival-toolkit.php');
 $convio_survival = new convio_survival;
 
 // configure connection details
-$convio_survival->configure_convio('secure3.convio.net','sdc','api_key','kellymears','Q!W@E#R$T%Y^');
+$convio_survival->configure_convio($server,$short_name,$api_key,$login_name,$login_password);
 
 
 // -----------------------------------------------------------------------------
@@ -25,20 +25,20 @@ $constituent = $convio_survival->get_constituent('hello@kellymears.me');
 
 	$constituent->name->first;
 	$constituent->name->last;
-    $constituent->name->middle;
+    	$constituent->name->middle;
 
 	$constituent->home_phone;
-    $constituent->email->primary_address;
-    $constituent->email->status;
-    $constituent->email->accepts_email;
+    	$constituent->email->primary_address;
+    	$constituent->email->status;
+    	$constituent->email->accepts_email;
 
-    $constituent->primary_address->state;
-    $constituent->primary_address->street1;
-    $constituent->primary_address->phone;
+    	$constituent->primary_address->state;
+    	$constituent->primary_address->street1;
+    	$constituent->primary_address->phone;
 
-    $constituent->lifetime_alert_response_count;
-    $constituent->curr_year_alert_response_count;
-    $constituent->prev_year_alert_response_count;
+    	$constituent->lifetime_alert_response_count;
+    	$constituent->curr_year_alert_response_count;
+    	$constituent->prev_year_alert_response_count;
 */
     
 
@@ -47,9 +47,6 @@ $constituent = $convio_survival->get_constituent('hello@kellymears.me');
 // -----------------------------------------------------------------------------
 
 $congressperson = $convio_survival->get_congressperson($constituent->primary_address->state, $constituent->districts->cong_dist_id);
-
-// how awesome would $congressperson->phone or even 
-// $constituent->congresperson->phone be?
 
 
 // -----------------------------------------------------------------------------
@@ -81,13 +78,10 @@ $congressperson = $convio_survival->get_congressperson($constituent->primary_add
 // -----------------------------------------------------------------------------
 
 // basic security (need auth implementation in convio-survival-toolkit.php SOON)
-if($_GET['password'] == 'starcraft') {
+	
+$convio_survival->do_api(); 
+$convio_survival->do_api_output();
 
-	// include to allow for api methods	
-	$convio_survival->do_api(); 
-	$convio_survival->do_api_output();
-
-} else print "not authorized, yo.";
 
 // -----------------------------------------------------------------------------
 // debug methods
